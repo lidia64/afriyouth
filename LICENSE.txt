@@ -1,0 +1,2 @@
+Copyright (c) 2026. AfriYouth starter implementation.
+Use and adapt this project for your challenge submission. Verify rights for all third-party images, fonts and content before production use.

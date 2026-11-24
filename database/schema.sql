@@ -1,0 +1,102 @@
+CREATE DATABASE IF NOT EXISTS afriyouth_db
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE afriyouth_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('youth','partner','admin') NOT NULL DEFAULT 'youth',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS organizations (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  name VARCHAR(180) NOT NULL,
+  sector VARCHAR(120) NULL,
+  location VARCHAR(160) NULL,
+  description TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_org_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS opportunities (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  organization_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(180) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  opportunity_type VARCHAR(80) NULL,
+  summary VARCHAR(500) NOT NULL,
+  description TEXT NOT NULL,
+  eligibility TEXT NULL,
+  location VARCHAR(180) NULL,
+  deadline DATE NULL,
+  application_url VARCHAR(500) NULL,
+  status ENUM('pending','published','rejected','closed') NOT NULL DEFAULT 'pending',
+  is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_opp_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  opportunity_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  message TEXT NULL,
+  status ENUM('submitted','reviewing','accepted','rejected') NOT NULL DEFAULT 'submitted',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_application (opportunity_id, user_id),
+  CONSTRAINT fk_app_opp FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE CASCADE,
+  CONSTRAINT fk_app_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS programs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(180) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  summary VARCHAR(500) NOT NULL,
+  description TEXT NOT NULL,
+  audience VARCHAR(255) NULL,
+  duration VARCHAR(100) NULL,
+  is_demo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS publications (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(180) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  summary VARCHAR(500) NOT NULL,
+  description TEXT NULL,
+  author VARCHAR(180) NULL,
+  document_url VARCHAR(1000) NULL,
+  published_on DATE NULL,
+  is_demo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS resources (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(180) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  summary VARCHAR(500) NOT NULL,
+  description TEXT NULL,
+  resource_type VARCHAR(80) NOT NULL DEFAULT 'Resource',
+  author VARCHAR(180) NULL,
+  document_url VARCHAR(1000) NULL,
+  published_on DATE NULL,
+  is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  subject VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
