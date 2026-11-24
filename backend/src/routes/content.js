@@ -111,8 +111,23 @@ router.get('/my/opportunities', requireAuth, allowRoles('partner','admin'), asyn
 
 router.post('/opportunities', requireAuth, allowRoles('partner'), asyncRoute(async (req,res) => {
   const { title, category, opportunity_type, summary, description, eligibility, location, deadline, application_url } = req.body;
+  if([title,category,summary,description].some(value=>typeof value!=='string') || [opportunity_type,eligibility,location,deadline,application_url].some(value=>value!=null && typeof value!=='string')) {
+    return res.status(400).json({message:'Opportunity fields must be text.'});
+  }
   if (!title?.trim() || !category?.trim() || !summary?.trim() || !description?.trim()) {
     return res.status(400).json({ message: 'Title, category, summary and description are required.' });
+  }
+  if(title.trim().length>200 || category.trim().length>100 || summary.trim().length>500 || description.length>30000 || (opportunity_type?.trim().length||0)>80 || (location?.trim().length||0)>200) {
+    return res.status(400).json({message:'One or more opportunity fields exceed the supported length.'});
+  }
+  if(deadline) {
+    const parsedDate=new Date(`${deadline}T00:00:00Z`);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0,10)!==deadline) return res.status(400).json({message:'Enter a valid application deadline.'});
+  }
+  if(application_url?.trim()) {
+    try { const parsed=new URL(application_url.trim()); if(!['http:','https:'].includes(parsed.protocol)) throw new Error('protocol'); }
+    catch { return res.status(400).json({message:'Application URL must use http or https.'}); }
+    if(application_url.trim().length>500) return res.status(400).json({message:'Application URL is too long.'});
   }
   let [categories] = await pool.execute('SELECT id FROM categories WHERE category_name=?', [category.trim()]);
   if (!categories[0]) {
@@ -130,12 +145,14 @@ router.post('/opportunities', requireAuth, allowRoles('partner'), asyncRoute(asy
 }));
 
 router.post('/opportunities/:id/apply', requireAuth, allowRoles('youth'), asyncRoute(async (req,res) => {
+  const message=typeof req.body.message==='string' ? req.body.message.trim() : '';
+  if(message.length>5000) return res.status(400).json({message:'Your application note must be 5,000 characters or fewer.'});
   try {
     const [result] = await pool.execute(`
       INSERT INTO applications (user_id,opportunity_id,cover_letter)
       SELECT ?,id,? FROM opportunities
       WHERE id=? AND status='published' AND is_demo=0 AND (closing_date IS NULL OR closing_date >= CURRENT_DATE)`,
-      [req.user.id, req.body.message || null, req.params.id]);
+      [req.user.id, message || null, req.params.id]);
     if (!result.affectedRows) return res.status(400).json({ message: 'This opportunity is no longer accepting applications.' });
     res.status(201).json({ message: 'Application submitted.' });
   } catch (error) {
@@ -146,8 +163,10 @@ router.post('/opportunities/:id/apply', requireAuth, allowRoles('youth'), asyncR
 
 router.patch('/admin/opportunities/:id', requireAuth, allowRoles('admin'), asyncRoute(async (req,res) => {
   const status = req.body.status;
-  if (!['published','closed','archived','pending','draft'].includes(status)) return res.status(400).json({ message: 'Invalid status.' });
-  await pool.execute('UPDATE opportunities SET status=? WHERE id=?', [status, req.params.id]);
+  if (!['published','closed','archived','pending','draft','rejected'].includes(status)) return res.status(400).json({ message: 'Invalid status.' });
+  const rejectionReason=typeof req.body.rejection_reason==='string' ? req.body.rejection_reason.trim().slice(0,255) : null;
+  await pool.execute(`UPDATE opportunities SET status=?,published_at=IF(?='published',CURRENT_DATE,published_at),
+    rejection_reason=IF(?='rejected',?,NULL) WHERE id=?`, [status,status,status,rejectionReason,req.params.id]);
   res.json({ message: `Opportunity ${status}.` });
 }));
 

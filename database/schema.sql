@@ -122,6 +122,10 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
   `bio` text DEFAULT NULL,
   `profile_image` varchar(255) DEFAULT NULL,
   `date_of_birth` date DEFAULT NULL,
+  `education` text DEFAULT NULL,
+  `skills` text DEFAULT NULL,
+  `interests` text DEFAULT NULL,
+  `career_goals` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`),
   KEY `organization_id` (`organization_id`),
@@ -144,7 +148,7 @@ CREATE TABLE IF NOT EXISTS `opportunities` (
   `application_url` varchar(500) DEFAULT NULL,
   `opening_date` date DEFAULT NULL,
   `closing_date` date DEFAULT NULL,
-  `status` enum('draft','pending','published','closed','archived') DEFAULT 'draft',
+  `status` enum('draft','pending','published','closed','archived','rejected') DEFAULT 'draft',
   `rejection_reason` varchar(255) DEFAULT NULL,
   `short_description` varchar(500) DEFAULT NULL,
   `publisher_name` varchar(200) DEFAULT NULL,
@@ -332,6 +336,16 @@ CREATE TABLE IF NOT EXISTS `program_registrations` (
   KEY `program_id` (`program_id`),
   CONSTRAINT `program_registrations_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `program_registrations_ibfk_2` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `saved_opportunities` (
+  `user_id` int(11) NOT NULL,
+  `opportunity_id` int(11) NOT NULL,
+  `saved_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`,`opportunity_id`),
+  KEY `opportunity_id` (`opportunity_id`),
+  CONSTRAINT `saved_opportunities_opportunity_fk` FOREIGN KEY (`opportunity_id`) REFERENCES `opportunities` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saved_opportunities_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS=1;

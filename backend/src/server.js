@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { pool } from './db.js';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
+import intelligenceRoutes from './routes/intelligence.js';
 
 const app = express();
 app.use(helmet());
@@ -16,6 +17,7 @@ app.get('/api/health', async (_req,res) => {
 });
 app.use('/api/auth', authRoutes);
 app.use('/api', contentRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 app.use((error,_req,res,_next) => {
   console.error(error);
   res.status(500).json({ message: 'Something went wrong.' });
