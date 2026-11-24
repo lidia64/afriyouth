@@ -15,7 +15,7 @@ A fresh, standalone starter implementation based on the AfriYouth requirements d
 - npm
 
 ## 1. Create the database
-Open phpMyAdmin or MySQL and run `database/schema.sql`, then run `database/seed.sql`.
+Open phpMyAdmin or MySQL and run `database/schema.sql`, then run `database/seed.sql`. The seed adds only clearly labelled development examples for Resources and Publications; it does not add sample opportunities. For an existing AfriYouth database, run `database/migrations/2026-11-24-content-library.sql` once before starting the updated API. That migration adds the opportunity type field and Publications table while retaining existing Resources and Opportunities records.
 
 The seed data is explicitly demo content. Replace it with verified AfriYouth information before presenting it as official.
 
@@ -47,7 +47,8 @@ UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
 Never expose admin role changes to public users.
 
 ## Main features
-- Public home, about, programs, services, opportunities, publications and contact pages
+- Public home, about, programs, services, opportunities, resources, publications and contact pages
+- Searchable resource, publication and approved opportunity listings with detail pages
 - Youth and partner registration/login
 - Authenticated dashboards
 - Partners can create and manage their own opportunities
@@ -57,7 +58,7 @@ Never expose admin role changes to public users.
 - API and frontend separated
 
 ## Important content note
-Program descriptions, organizations, publications and opportunities included in the seed are illustrative demo records. They are not verified AfriYouth programs, partnerships, deadlines or live application calls. Demo testimonials are intentionally omitted rather than inventing beneficiary stories.
+Seeded Resources and Publications are marked as demo records and are not official AfriYouth materials. Opportunities are returned publicly only when their database status is `published`; demo opportunity records retain a visible demo label and cannot accept applications. Demo testimonials are intentionally omitted rather than inventing beneficiary stories.
 
 ## Production checklist
 - Replace demo content with approved organizational information.

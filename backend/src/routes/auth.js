@@ -16,15 +16,35 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Organization name is required.' });
     }
     const hash = await bcrypt.hash(password, 12);
-    const [result] = await pool.execute(
-      'INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)',
-      [name.trim(), email.trim().toLowerCase(), hash, role]
-    );
-    if (role === 'partner') {
-      await pool.execute(
-        'INSERT INTO organizations (user_id,name,sector,location) VALUES (?,?,?,?)',
-        [result.insertId, organizationName.trim(), sector || null, location || null]
+    const connection = await pool.getConnection();
+    let userId;
+    try {
+      await connection.beginTransaction();
+      const [roles] = await connection.execute('SELECT id FROM roles WHERE role_name=?', [role]);
+      if (!roles[0]) throw new Error('Configured account role is unavailable.');
+      const [result] = await connection.execute(
+        'INSERT INTO users (role_id,full_name,email,password_hash,account_status) VALUES (?,?,?,?,?)',
+        [roles[0].id, name.trim(), email.trim().toLowerCase(), hash, 'active']
       );
+      userId = result.insertId;
+      let organizationId = null;
+      if (role === 'partner') {
+        const [organization] = await connection.execute(
+          'INSERT INTO organizations (organization_name,email,organization_type,country,is_public,is_verified) VALUES (?,?,?,?,0,0)',
+          [organizationName.trim(), email.trim().toLowerCase(), sector || null, location || null]
+        );
+        organizationId = organization.insertId;
+      }
+      await connection.execute(
+        'INSERT INTO user_profiles (user_id,organization_id,country) VALUES (?,?,?)',
+        [userId, organizationId, role === 'youth' ? location || null : null]
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
     res.status(201).json({ message: 'Account created. You can now sign in.' });
   } catch (error) {
@@ -37,11 +57,14 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
-    const [rows] = await pool.execute('SELECT id,name,email,password_hash,role FROM users WHERE email=?', [email]);
+    const [rows] = await pool.execute(`
+      SELECT u.id,u.full_name AS name,u.email,u.password_hash,u.account_status,r.role_name AS role
+      FROM users u JOIN roles r ON r.id=u.role_id WHERE u.email=?`, [email]);
     const user = rows[0];
     if (!user || !(await bcrypt.compare(req.body.password || '', user.password_hash))) {
       return res.status(401).json({ message: 'Email or password is incorrect.' });
     }
+    if (user.account_status !== 'active') return res.status(403).json({ message: 'Your account is awaiting approval or is currently unavailable.' });
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {
